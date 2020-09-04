@@ -181,7 +181,7 @@ def generate_sequence(
             for index in top_k_index_in_all_beams
         ], dim=0)
 
-    return tokenizer.batch_decode(cur_seq.tolist())
+    return tokenizer.batch_decode(cur_seq.tolist(), stop_at_eos=True)
 
 
 def generate_sequence_by_config(

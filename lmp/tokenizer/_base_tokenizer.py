@@ -431,7 +431,8 @@ class BaseTokenizer:
     def decode(
             self,
             token_ids: Iterable[int],
-            remove_special_tokens: bool = False
+            remove_special_tokens: bool = False,
+            stop_at_eos: bool = False
     ) -> str:
         r"""Decode token ids into sequence.
 
@@ -462,6 +463,11 @@ class BaseTokenizer:
             raise TypeError(
                 '`remove_special_tokens` must be an instance of `bool`.'
             )
+
+        if stop_at_eos:
+            eos = self.convert_token_to_id(self.__class__.eos_token)
+            if eos in token_ids:
+                token_ids = token_ids[:token_ids.index(eos)+1]
 
         if remove_special_tokens:
             # Get special tokens' ids except unknown token.
@@ -560,7 +566,8 @@ class BaseTokenizer:
     def batch_decode(
             self,
             batch_token_ids: Iterable[Iterable[int]],
-            remove_special_tokens: bool = False
+            remove_special_tokens: bool = False,
+            stop_at_eos: bool = False
     ) -> List[str]:
         r"""Decode batch of token ids into batch of sequences.
 
@@ -592,7 +599,8 @@ class BaseTokenizer:
             return [
                 self.decode(
                     token_ids,
-                    remove_special_tokens=remove_special_tokens
+                    remove_special_tokens=remove_special_tokens,
+                    stop_at_eos=stop_at_eos
                 )
                 for token_ids in batch_token_ids
             ]
