@@ -191,6 +191,8 @@ if __name__ == '__main__':
         tokenizer=tokenizer
     )
 
+    print(f'model size = {sum(p.numel() for p in model.parameters() if p.requires_grad)/1024/1024:.2f} M trainable parameters')
+
     # Load optimizer
     optimizer = lmp.util.load_optimizer_by_config(
         checkpoint=args.checkpoint,
@@ -211,6 +213,6 @@ if __name__ == '__main__':
     total_exec_time = time.time() - start_time
     print('Total execution time: {} hrs {} mins {} secs'.format(
         int(total_exec_time // 3600),
-        int(total_exec_time // 60),
+        int(total_exec_time // 60 % 60),
         int(total_exec_time % 60)
     ))
