@@ -149,6 +149,24 @@ if __name__ == '__main__':
         help="Tokenizer's class.",
         type=str
     )
+    parser.add_argument(
+        '--validation_set',
+        default=0,
+        help="validation set propertion",
+        type=float
+    )
+    parser.add_argument(
+        '--test_set',
+        default=0,
+        help="test set propertion",
+        type=float
+    )
+    parser.add_argument(
+        '--ckpt_limit',
+        default=5,
+        help='maximum number of checkpoint to keep',
+        type=float
+    )
 
     args = parser.parse_args()
 

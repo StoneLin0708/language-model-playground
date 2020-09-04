@@ -75,7 +75,10 @@ def load_config(args: argparse.Namespace) -> lmp.config.BaseConfig:
             num_rnn_layers=args.num_rnn_layers,
             optimizer_class=args.optimizer_class,
             seed=args.seed,
-            tokenizer_class=args.tokenizer_class
+            tokenizer_class=args.tokenizer_class,
+            validation_set=args.validation_set,
+            test_set=args.test_set,
+            ckpt_limit=args.ckpt_limit
         )
 
     return config

@@ -108,7 +108,10 @@ class BaseConfig:
             num_rnn_layers: int = 1,
             optimizer_class: str = 'adam',
             seed: int = 1,
-            tokenizer_class: str = 'char_dict'
+            tokenizer_class: str = 'char_dict',
+            validation_set: float = 0,
+            test_set: float = 0,
+            ckpt_limit: int = 5
     ):
         # Type check.
         if not isinstance(batch_size, int):
@@ -256,6 +259,9 @@ class BaseConfig:
         self.optimizer_class = str(optimizer_class)
         self.seed = int(seed)
         self.tokenizer_class = str(tokenizer_class)
+        self.validation_set = float(validation_set)
+        self.test_set = float(test_set)
+        self.ckpt_limit = int(ckpt_limit)
 
     @classmethod
     def load(cls, experiment: str):
@@ -318,6 +324,9 @@ class BaseConfig:
         yield 'optimizer_class', self.optimizer_class
         yield 'seed', self.seed
         yield 'tokenizer_class', self.tokenizer_class
+        yield 'validation_set', self.validation_set
+        yield 'test_set', self.test_set
+        yield 'ckpt_limit', self.ckpt_limit
 
     def save(self) -> None:
         r"""Save configuration into JSON file.

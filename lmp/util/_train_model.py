@@ -42,13 +42,16 @@ def train_model(
         checkpoint: int,
         checkpoint_step: int,
         data_loader: torch.utils.data.DataLoader,
+        valid_data_loader: torch.utils.data.DataLoader,
         device: torch.device,
         epoch: int,
         experiment: str,
         max_norm: float,
         model: Union[lmp.model.BaseRNNModel, lmp.model.BaseResRNNModel],
         optimizer: Union[torch.optim.SGD, torch.optim.Adam],
-        vocab_size: int
+        vocab_size: int,
+        tokenizer: lmp.tokenizer.BaseTokenizer,
+        ckpt_limit: int
 ) -> None:
     r"""Helper function for training language model.
 
@@ -240,9 +243,39 @@ def train_model(
                     optimizer.state_dict(),
                     os.path.join(file_dir, f'optimizer-{step}.pt')
                 )
-                # Log average loss.
-                writer.add_scalar('loss', total_loss / checkpoint_step, step)
-                total_loss = 0.0
+                lmp.util.limited_ckpts(file_dir, ckpt_limit, [
+                                       r'model-(\d+)\.pt', r'optimizer-(\d+)\.pt'])
+                model.eval()
+                valid_loss = 0.
+                valid_step = 0
+                for x, y in valid_data_loader:
+                    valid_step += 1
+                    x = x.to(device)
+                    y = y.reshape(-1).to(device)
+                    pred = model(x)
+                    loss = criterion(pred.reshape(-1, vocab_size), y)
+                    valid_loss += loss.item()
+
+                B, S = x.shape
+
+                x = x[:3]
+                y = y.reshape(B, S)[:3]
+                p = torch.argmax(torch.nn.functional.softmax(
+                    pred.reshape(B, S, vocab_size)[:3].cpu(), dim=-1), dim=-1)
+
+                x = tokenizer.batch_decode(x.cpu().tolist(), stop_at_eos=True)
+                y = tokenizer.batch_decode(y.cpu().tolist(), stop_at_eos=True)
+                p = tokenizer.batch_decode(p.cpu().tolist(), stop_at_eos=True)
+
+                text = '|input|predict|target|  \n|-|-|-|  \n'
+                for i, j, k, idx in zip(x, y, p, range(3)):
+                    text += f'|{i}|{k}|{j}|  \n'
+                writer.add_text(f'predict', text, step)
+                writer.add_scalars('loss',
+                                   {'train': total_loss / checkpoint_step,
+                                    'validation': valid_loss / valid_step}, step)
+                model.train()
+                total_loss = 0.
 
     # Save last checkpoint.
     torch.save(
@@ -314,8 +347,28 @@ def train_model_by_config(
     )
 
     # `torch` utility for sampling.
+    N = len(dataset)
+    N_valid = int(N * config.validation_set)
+    N_test = int(N * config.test_set)
+    train, valid, test = torch.utils.data.random_split(
+        dataset, [N-N_valid-N_test, N_valid, N_test], generator=torch.Generator().manual_seed(config.seed))
+
     data_loader = torch.utils.data.DataLoader(
-        dataset,
+        train,
+        batch_size=config.batch_size,
+        shuffle=True,
+        collate_fn=collate_fn
+    )
+
+    valid_data_loader = torch.utils.data.DataLoader(
+        valid,
+        batch_size=config.batch_size,
+        shuffle=True,
+        collate_fn=collate_fn
+    )
+
+    test_data_loader = torch.utils.data.DataLoader(
+        test,
         batch_size=config.batch_size,
         shuffle=True,
         collate_fn=collate_fn
@@ -325,11 +378,14 @@ def train_model_by_config(
         checkpoint=checkpoint,
         checkpoint_step=config.checkpoint_step,
         data_loader=data_loader,
+        valid_data_loader=valid_data_loader,
         device=config.device,
         epoch=config.epoch,
         experiment=config.experiment,
         max_norm=config.max_norm,
         model=model,
         optimizer=optimizer,
-        vocab_size=tokenizer.vocab_size
+        vocab_size=tokenizer.vocab_size,
+        tokenizer=tokenizer,
+        ckpt_limit=config.ckpt_limit
     )
