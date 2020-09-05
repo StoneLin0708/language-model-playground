@@ -38,11 +38,37 @@ import lmp.path
 import lmp.tokenizer
 
 
+def compute_loss(model, criterion, data_loader, device, sample=0):
+    """
+    helper function to compute loss through entire dataset
+    """
+    loss = 0.
+    step = 0
+    for x, y in data_loader:
+        step += 1
+        x = x.to(device)
+        y = y.reshape(-1).to(device)
+        p = model(x)
+        loss += criterion(p.reshape(y.shape[0], -1), y).item()
+
+    B, S = x.shape
+    sample = min(B, sample)
+    if sample > 0:
+        x = x[:sample].cpu()
+        y = y.reshape(B, S)[:sample].cpu()
+        p = torch.argmax(torch.nn.functional.softmax(
+            p.reshape(B, S, -1)[:sample].cpu(), dim=-1), dim=-1)
+        return {'loss': loss / step, 'x': x, 'y': y, 'p': p}
+    else:
+        return {'loss': loss/step}
+
+
 def train_model(
         checkpoint: int,
         checkpoint_step: int,
         data_loader: torch.utils.data.DataLoader,
         valid_data_loader: torch.utils.data.DataLoader,
+        test_data_loader: torch.utils.data.DataLoader,
         device: torch.device,
         epoch: int,
         experiment: str,
@@ -235,6 +261,9 @@ def train_model(
 
             # Save checkpoint for each `checkpoint_step`.
             if step % checkpoint_step == 0:
+                train_loss = total_loss / checkpoint_step
+                total_loss = 0.
+
                 torch.save(
                     model.state_dict(),
                     os.path.join(file_dir, f'model-{step}.pt')
@@ -245,35 +274,20 @@ def train_model(
                 )
                 lmp.util.limited_ckpts(file_dir, ckpt_limit, [
                                        r'model-(\d+)\.pt', r'optimizer-(\d+)\.pt'])
+
+                # compute validation loss and take sample from last batch
                 model.eval()
-                valid_loss = 0.
-                valid_step = 0
-                for x, y in valid_data_loader:
-                    valid_step += 1
-                    x = x.to(device)
-                    y = y.reshape(-1).to(device)
-                    pred = model(x)
-                    loss = criterion(pred.reshape(-1, vocab_size), y)
-                    valid_loss += loss.item()
-
-                B, S = x.shape
-
-                x = x[:3]
-                y = y.reshape(B, S)[:3]
-                p = torch.argmax(torch.nn.functional.softmax(
-                    pred.reshape(B, S, vocab_size)[:3].cpu(), dim=-1), dim=-1)
-
-                x = tokenizer.batch_decode(x.cpu().tolist(), stop_at_eos=True)
-                y = tokenizer.batch_decode(y.cpu().tolist(), stop_at_eos=True)
-                p = tokenizer.batch_decode(p.cpu().tolist(), stop_at_eos=True)
-
-                writer.add_text(f'predict', lmp.util.markdown_table(
-                    ['input', 'predict', 'target'], [x, p, y]), step)
-                writer.add_scalars('loss',
-                                   {'train': total_loss / checkpoint_step,
-                                    'validation': valid_loss / valid_step}, step)
+                valid = compute_loss(
+                    model, criterion, valid_data_loader, device, sample=3)
                 model.train()
-                total_loss = 0.
+
+                def dec(i): return tokenizer.batch_decode(
+                    i.tolist(), stop_at_eos=True)
+                writer.add_text(f'predict', lmp.util.markdown_table(
+                    ['input', 'predict', 'target'], [dec(valid['x']), dec(valid['p']), dec(valid['y'])]), step)
+                writer.add_scalars('loss',
+                                   {'train': train_loss,
+                                    'validation': valid['loss']}, step)
 
     # Save last checkpoint.
     torch.save(
@@ -284,6 +298,10 @@ def train_model(
         optimizer.state_dict(),
         os.path.join(file_dir, f'optimizer-{step}.pt')
     )
+
+    model.eval()
+    res = compute_loss(model, criterion, test_data_loader, device)
+    print('test loss = {}'.format(res['loss']))
 
 
 def train_model_by_config(
@@ -377,6 +395,7 @@ def train_model_by_config(
         checkpoint_step=config.checkpoint_step,
         data_loader=data_loader,
         valid_data_loader=valid_data_loader,
+        test_data_loader=test_data_loader,
         device=config.device,
         epoch=config.epoch,
         experiment=config.experiment,
