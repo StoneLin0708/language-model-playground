@@ -267,10 +267,8 @@ def train_model(
                 y = tokenizer.batch_decode(y.cpu().tolist(), stop_at_eos=True)
                 p = tokenizer.batch_decode(p.cpu().tolist(), stop_at_eos=True)
 
-                text = '|input|predict|target|  \n|-|-|-|  \n'
-                for i, j, k, idx in zip(x, y, p, range(3)):
-                    text += f'|{i}|{k}|{j}|  \n'
-                writer.add_text(f'predict', text, step)
+                writer.add_text(f'predict', lmp.util.markdown_table(
+                    ['input', 'predict', 'target'], [x, p, y]), step)
                 writer.add_scalars('loss',
                                    {'train': total_loss / checkpoint_step,
                                     'validation': valid_loss / valid_step}, step)

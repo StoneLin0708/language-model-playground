@@ -44,3 +44,4 @@ from lmp.util._train_model import train_model_by_config
 from lmp.util._train_tokenizer import train_tokenizer
 from lmp.util._train_tokenizer import train_tokenizer_by_config
 from lmp.util._io import limited_ckpts
+from lmp.util._io import markdown_table
