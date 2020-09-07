@@ -33,7 +33,7 @@ def generate_sequence(
         begin_of_sequence: str,
         device: torch.device,
         max_seq_len: int,
-        model: Union[lmp.model.BaseRNNModel, lmp.model.BaseResRNNModel],
+        model: Union[lmp.model.BaseRNNModel, lmp.model.BaseResRNNModel, lmp.model.TransformerLanguageModel],
         tokenizer: lmp.tokenizer.BaseTokenizer
 ) -> List[str]:
     r"""Sequences generation using beam search.
@@ -186,7 +186,7 @@ def generate_sequence(
 
 def generate_sequence_by_config(
         beam_width: int,
-        begin_of_sequence: str,
+        begin_of_sequence: List[str],
         config: lmp.config.BaseConfig,
         max_seq_len: int,
         model: Union[lmp.model.BaseRNNModel, lmp.model.BaseResRNNModel],
@@ -226,12 +226,11 @@ def generate_sequence_by_config(
         raise TypeError(
             '`config` must be an instance of `lmp.config.BaseConfig`.'
         )
-
-    return generate_sequence(
+    return [generate_sequence(
         beam_width=beam_width,
-        begin_of_sequence=begin_of_sequence,
+        begin_of_sequence=bos,
         device=config.device,
         max_seq_len=max_seq_len,
         model=model,
         tokenizer=tokenizer
-    )
+    ) for bos in begin_of_sequence]

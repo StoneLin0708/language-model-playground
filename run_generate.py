@@ -28,6 +28,7 @@ if __name__ == '__main__':
         '--begin_of_sequence',
         help='Begining of sequence which model will auto-complete.',
         required=True,
+        nargs='+',
         type=str
     )
     parser.add_argument(
@@ -87,4 +88,5 @@ if __name__ == '__main__':
 
     # Output generated sequences.
     for sequence in generated_sequences:
-        print(sequence)
+        for res in sequence:
+            print(res)
