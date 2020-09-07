@@ -36,6 +36,7 @@ import lmp.dataset
 import lmp.model
 import lmp.path
 import lmp.tokenizer
+import lmp.util
 
 
 def compute_loss(model, criterion, data_loader, device, sample=0):
@@ -266,14 +267,14 @@ def train_model(
 
                 torch.save(
                     model.state_dict(),
-                    os.path.join(file_dir, f'model-{step}.pt')
+                    lmp.util.get_model_ckpt_name(file_dir, step)
                 )
                 torch.save(
                     optimizer.state_dict(),
-                    os.path.join(file_dir, f'optimizer-{step}.pt')
+                    lmp.util.get_optimizer_ckpt_name(file_dir, step)
                 )
-                lmp.util.limited_ckpts(file_dir, ckpt_limit, [
-                                       r'model-(\d+)\.pt', r'optimizer-(\d+)\.pt'])
+
+                lmp.util.limited_ckpt(file_dir, ckpt_limit)
 
                 # compute validation loss and take sample from last batch
                 model.eval()
@@ -292,11 +293,11 @@ def train_model(
     # Save last checkpoint.
     torch.save(
         model.state_dict(),
-        os.path.join(file_dir, f'model-{step}.pt')
+        lmp.util.get_model_ckpt_name(file_dir, step)
     )
     torch.save(
         optimizer.state_dict(),
-        os.path.join(file_dir, f'optimizer-{step}.pt')
+        lmp.util.get_optimizer_ckpt_name(file_dir, step)
     )
 
     model.eval()

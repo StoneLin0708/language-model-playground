@@ -47,7 +47,7 @@ def load_config(args: argparse.Namespace) -> lmp.config.BaseConfig:
         raise TypeError('`args` must be an instance of `argparse.Namespace`.')
 
     # Load pre-existed configuration object.
-    if args.checkpoint != -1:
+    if args.checkpoint > 0:
         config = lmp.config.BaseConfig.load(experiment=args.experiment)
 
         # Continue training from previous checkpoint.

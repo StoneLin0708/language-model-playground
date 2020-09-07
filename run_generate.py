@@ -14,6 +14,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
+import os
 
 # self-made modules
 
@@ -33,8 +34,8 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--checkpoint',
-        help='Load specific checkpoint.',
-        required=True,
+        help='Load specific checkpoint, load latest by default',
+        default=-1,
         type=int
     )
     parser.add_argument(
@@ -59,6 +60,10 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
+
+    if args.checkpoint == -1:
+        args.checkpoint = lmp.util.get_latest_valid_ckpt_count(
+            os.path.join(lmp.path.DATA_PATH, args.experiment))
 
     # Load pre-trained hyperparameters.
     config = lmp.config.BaseConfig.load(experiment=args.experiment)

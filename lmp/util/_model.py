@@ -201,7 +201,7 @@ def load_model(
             )))
         )
 
-    if checkpoint != -1:
+    if checkpoint > 0:
         if not experiment:
             raise ValueError('`experiment` must not be empty.')
 

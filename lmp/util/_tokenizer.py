@@ -110,7 +110,7 @@ def load_tokenizer(
             )))
         )
 
-    if checkpoint != -1:
+    if checkpoint > 0:
         tokenizer = tokenizer.load(experiment=experiment)
 
     return tokenizer

@@ -8,14 +8,7 @@ def sort_by_integer_pattern(l, pattern):
         m = re.match(pattern, i)
         if m is not None:
             t.append((int(m.group(1)), i))
-    return [i for _, i in sorted(t)]
-
-
-def limited_ckpts(folder, limit, patterns):
-    fs = os.listdir(folder)
-    for pattern in patterns:
-        for i in sort_by_integer_pattern(fs, pattern)[:-limit]:
-            os.remove(os.path.join(folder, i))
+    return sorted(t)
 
 
 def markdown_table(head, data):

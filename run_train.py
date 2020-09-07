@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import os
 import argparse
 import time
 
@@ -45,7 +46,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--checkpoint',
         default=-1,
-        help='Start from specific checkpoint.',
+        help='Start from specific checkpoint, load latest by default',
         type=int
     )
     parser.add_argument(
@@ -167,8 +168,23 @@ if __name__ == '__main__':
         help='maximum number of checkpoint to keep',
         type=float
     )
+    parser.add_argument(
+        '--override_model',
+        default=False,
+        help='override exist model',
+        type=bool
+    )
 
     args = parser.parse_args()
+
+    folder = os.path.join(lmp.path.DATA_PATH, args.experiment)
+    if args.checkpoint == 0:  # need reset
+        if (not args.override_model) and (len(lmp.util.limited_ckpt(folder, 0, False)) > 0):
+            raise Exception(
+                'found checkpoint, set --override_model=True to override')
+        lmp.util.limited_ckpt(folder, 0)
+    elif args.checkpoint == -1:  # load latest
+        args.checkpoint = lmp.util.get_latest_valid_ckpt_count(folder)
 
     # Hyperparameters setup.
     config = lmp.util.load_config(args)
@@ -194,7 +210,7 @@ if __name__ == '__main__':
     )
 
     # Train tokenizer from scratch if necessary.
-    if args.checkpoint == -1:
+    if args.checkpoint == 0:
         lmp.util.train_tokenizer_by_config(
             config=config,
             dataset=dataset,
@@ -209,7 +225,8 @@ if __name__ == '__main__':
         tokenizer=tokenizer
     )
 
-    print(f'model size = {sum(p.numel() for p in model.parameters() if p.requires_grad)/1024/1024:.2f} M trainable parameters')
+    print(
+        f'model size = {sum(p.numel() for p in model.parameters() if p.requires_grad)/1024/1024:.2f} M trainable parameters')
 
     # Load optimizer
     optimizer = lmp.util.load_optimizer_by_config(
