@@ -68,8 +68,6 @@ def train_model(
         checkpoint: int,
         checkpoint_step: int,
         data_loader: torch.utils.data.DataLoader,
-        valid_data_loader: torch.utils.data.DataLoader,
-        test_data_loader: torch.utils.data.DataLoader,
         device: torch.device,
         epoch: int,
         experiment: str,
@@ -78,7 +76,9 @@ def train_model(
         optimizer: Union[torch.optim.SGD, torch.optim.Adam],
         vocab_size: int,
         tokenizer: lmp.tokenizer.BaseTokenizer,
-        ckpt_limit: int
+        ckpt_limit: int,
+        valid_data_loader: torch.utils.data.DataLoader = None,
+        test_data_loader: torch.utils.data.DataLoader = None
 ) -> None:
     r"""Helper function for training language model.
 
@@ -275,20 +275,21 @@ def train_model(
                 )
 
                 lmp.util.limited_ckpt(file_dir, ckpt_limit)
-
+                losses = {'train': train_loss}
                 # compute validation loss and take sample from last batch
-                model.eval()
-                valid = compute_loss(
-                    model, criterion, valid_data_loader, device, sample=3)
-                model.train()
+                if valid_data_loader != None:
+                    model.eval()
+                    valid = compute_loss(
+                        model, criterion, valid_data_loader, device, sample=3)
+                    model.train()
 
-                def dec(i): return tokenizer.batch_decode(
-                    i.tolist(), stop_at_eos=True)
-                writer.add_text(f'predict', lmp.util.markdown_table(
-                    ['input', 'predict', 'target'], [dec(valid['x']), dec(valid['p']), dec(valid['y'])]), step)
-                writer.add_scalars('loss',
-                                   {'train': train_loss,
-                                    'validation': valid['loss']}, step)
+                    def dec(i): return tokenizer.batch_decode(
+                        i.tolist(), stop_at_eos=True)
+                    writer.add_text(f'predict', lmp.util.markdown_table(
+                        ['input', 'predict', 'target'], [dec(valid['x']), dec(valid['p']), dec(valid['y'])]), step)
+                    losses['validation'] = valid['loss']
+
+                writer.add_scalars('loss', losses, step)
 
     # Save last checkpoint.
     torch.save(
@@ -300,9 +301,10 @@ def train_model(
         lmp.util.get_optimizer_ckpt_name(file_dir, step)
     )
 
-    model.eval()
-    res = compute_loss(model, criterion, test_data_loader, device)
-    print('test loss = {}'.format(res['loss']))
+    if test_data_loader != None:
+        model.eval()
+        res = compute_loss(model, criterion, test_data_loader, device)
+        print('test loss = {}'.format(res['loss']))
 
 
 def train_model_by_config(
@@ -376,20 +378,23 @@ def train_model_by_config(
         shuffle=True,
         collate_fn=collate_fn
     )
+    valid_data_loader = None
+    test_data_loader = None
+    if N_valid > 0:
+        valid_data_loader = torch.utils.data.DataLoader(
+            valid,
+            batch_size=config.batch_size,
+            shuffle=True,
+            collate_fn=collate_fn
+        )
 
-    valid_data_loader = torch.utils.data.DataLoader(
-        valid,
-        batch_size=config.batch_size,
-        shuffle=True,
-        collate_fn=collate_fn
-    )
-
-    test_data_loader = torch.utils.data.DataLoader(
-        test,
-        batch_size=config.batch_size,
-        shuffle=True,
-        collate_fn=collate_fn
-    )
+    if N_test > 0:
+        test_data_loader = torch.utils.data.DataLoader(
+            test,
+            batch_size=config.batch_size,
+            shuffle=True,
+            collate_fn=collate_fn
+        )
 
     train_model(
         checkpoint=checkpoint,
